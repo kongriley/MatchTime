@@ -163,7 +163,7 @@ class matchvoice_model(nn.Module):
 
         inputs_llama = self.llama_proj(video_hidden)
         if self.inference:
-            return self.generate_text(inputs_llama)
+            return self.generate_text(inputs_llama, prompt=targets)
 
         if validating:
             temp_res_text = self.generate_text(inputs_llama)
@@ -191,9 +191,12 @@ class matchvoice_model(nn.Module):
         loss = outputs.loss
         return loss
     
-    def generate_text(self, inputs_llama):
-        start_embeds = self.llama_model.model.embed_tokens(torch.tensor([128000]).to(self.device))
-        inputs_llama_with_s = torch.cat([inputs_llama, start_embeds.expand(inputs_llama.size(0), -1, -1)], dim=1).to(dtype=torch.bfloat16)
+    def generate_text(self, inputs_llama, prompt):
+        print("Prompt: "+prompt)
+        start_embeds = self.llama_model.model.embed_tokens(torch.tensor([128000]).to(self.device)).expand(inputs_llama.size(0), -1, -1)
+        prompt_embeds = self.llama_model.model.embed_tokens(self.tokenizer(prompt, return_tensors="pt")["input_ids"].to(self.device)).expand(inputs_llama.size(0), -1, -1)
+        
+        inputs_llama_with_s = torch.cat([inputs_llama, prompt_embeds], dim=1).to(dtype=torch.bfloat16)
         temp_res_tokens = self.llama_model.generate(
             logits_processor=self.logits_prosessors,
             renormalize_logits=True,

@@ -50,7 +50,7 @@ def encode_features(data_loader, encoder, device):
             all_features = torch.cat((all_features, features), dim=0)  # 后续迭代，在第0维（行）上连接
     return all_features
 
-def predict_single_video_CLIP(video_path, predict_model, visual_encoder, size, fps, device):
+def predict_single_video_CLIP(prompt, video_path, predict_model, visual_encoder, size, fps, device):
     # Loading features
     try:
         dataset = VideoDataset(video_path, size=size, fps=fps)
@@ -64,7 +64,7 @@ def predict_single_video_CLIP(video_path, predict_model, visual_encoder, size, f
 
     sample = {
         "features": features.unsqueeze(dim=0),
-        "labels": None,
+        "labels": prompt,
         "attention_mask": None,
         "input_ids": None
     }
@@ -77,6 +77,7 @@ def predict_single_video_CLIP(video_path, predict_model, visual_encoder, size, f
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Process video files for feature extraction.')
+    parser.add_argument('--prompt', type=str, default="./data/stats.txt", help='Path to prompt to llama consisting of statistics.')
     parser.add_argument('--video_path', type=str, default="./examples/eng.mkv", help='Path to the soccer game video clip.')
     parser.add_argument('--device', type=str, default="cuda:0", help='Device to extract.')
     parser.add_argument('--size', type=int, default=224, help='Size to which each video frame is resized.')
@@ -88,6 +89,9 @@ if __name__ == '__main__':
     parser.add_argument("--num_features", type=int, default=512)
 
     args = parser.parse_args()
+
+    with open(args.prompt) as f:
+        prompt = f.read().strip()
 
     # 创建并配置模型
     model, preprocess = clip.load("ViT-B/32", device=args.device)
@@ -104,4 +108,4 @@ if __name__ == '__main__':
     predict_model.load_state_dict(new_model_state_dict)
     predict_model.eval()
 
-    predict_single_video_CLIP(video_path=args.video_path, predict_model=predict_model, visual_encoder=clip_image_encoder, device=args.device, size=args.size, fps=args.fps)
+    predict_single_video_CLIP(prompt=prompt, video_path=args.video_path, predict_model=predict_model, visual_encoder=clip_image_encoder, device=args.device, size=args.size, fps=args.fps)
